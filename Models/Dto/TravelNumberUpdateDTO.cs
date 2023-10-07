@@ -10,5 +10,6 @@ namespace WebApiTravel.Models.Dto
         [Required]
         public int TravelId { get; set; }
         public string SpecialDetails { get; set; }
+
     }
 }

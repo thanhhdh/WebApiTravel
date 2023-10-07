@@ -32,7 +32,7 @@ namespace WebApiTravel.Controllers
         {
             try
             {
-                IEnumerable<TravelNumber> travelNumberList = await _travelNumberRepository.GetAllAsync();
+                IEnumerable<TravelNumber> travelNumberList = await _travelNumberRepository.GetAllAsync(includeProperties:"Travel");
                 _response.Result = (_mapper.Map<List<TravelNumber>>(travelNumberList));
                 _response.StatusCode = HttpStatusCode.OK;
                 return Ok(_response);
