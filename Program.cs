@@ -6,6 +6,7 @@ using WebApiTravel.Repository.IRepository;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(option =>
 {
@@ -13,6 +14,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(option =>
 });
 builder.Services.AddScoped<ITravelRepository, TravelRepository>();
 builder.Services.AddScoped<ITravelNumberRepository, TravelNumberRepository>();
+
+
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 builder.Services.AddControllers(option =>
 {
