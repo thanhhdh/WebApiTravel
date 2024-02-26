@@ -88,12 +88,12 @@ namespace WebApiTravel.Controllers
             {
                 if (await _travelNumberRepository.GetAsync(x => x.TravelNo == travelNumberCreate.TravelNo) != null)
                 {
-                    ModelState.AddModelError("CustomError", "Travel Number already Exists");
+                    ModelState.AddModelError("ErrorMessages", "Travel Number already Exists");
                     return BadRequest(ModelState);
                 }
                 if (await _travelRepository.GetAsync(x => x.Id == travelNumberCreate.TravelId) == null)
                 {
-                    ModelState.AddModelError("CustomError", "Travel ID is Invalid");
+                    ModelState.AddModelError("ErrorMessages", "Travel ID is Invalid");
                     return BadRequest(ModelState);
                 }
                 if (travelNumberCreate == null)
@@ -160,7 +160,7 @@ namespace WebApiTravel.Controllers
                 }
                 if (await _travelRepository.GetAsync(x => x.Id == updateDTO.TravelId) == null)
                 {
-                    ModelState.AddModelError("CustomError", "Travel ID is Invalid");
+                    ModelState.AddModelError("ErrorMessages", "Travel ID is Invalid");
                     return BadRequest(ModelState);
                 }
                 TravelNumber model = _mapper.Map<TravelNumber>(updateDTO);
