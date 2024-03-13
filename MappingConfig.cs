@@ -16,6 +16,8 @@ namespace WebApiTravel
             CreateMap<TravelNumber, TravelNumberDTO>().ReverseMap();
             CreateMap<TravelNumber, TravelNumberCreateDTO>().ReverseMap();
             CreateMap<TravelNumber, TravelNumberUpdateDTO>().ReverseMap();
+            
+            CreateMap<ApplicationUser, UserDTO>().ReverseMap();
         }
     }
 }

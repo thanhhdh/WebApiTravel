@@ -7,6 +7,6 @@ namespace WebApiTravel.Repository.IRepository
     {
         bool IsUniqueUser(string username);
         Task<LoginReponseDTO> Login(LoginRequestDTO loginRequestDTO);
-        Task<LocalUser> Register(RegisterRequestDTO registerRequestDTO);
+        Task<UserDTO> Register(RegisterRequestDTO registerRequestDTO);
     }
 }

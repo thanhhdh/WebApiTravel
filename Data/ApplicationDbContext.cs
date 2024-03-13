@@ -1,14 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WebApiTravel.Models;
 
 namespace WebApiTravel.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) 
         {
-
         }
+
+        public DbSet<ApplicationUser> ApplicationUsers { get; set; }
 
         public DbSet<LocalUser> LocalUsers { get; set; }
         public DbSet<Travel> Travels { get; set; }
@@ -17,6 +19,8 @@ namespace WebApiTravel.Data
         //Seed Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+
             modelBuilder.Entity<Travel>().HasData(
                 new Travel()
                 {

@@ -6,8 +6,10 @@ using WebApiTravel.Repository.IRepository;
 
 namespace WebApiTravel.Controllers
 {
-    [Route("api/TravelAPI")]
+    [Route("api/v{version:apiVersion}/UsersAuth")]
     [ApiController]
+    [ApiVersionNeutral]
+
     public class UsersController : Controller
     {
         private readonly IUserRepository _userRepository;
@@ -15,7 +17,7 @@ namespace WebApiTravel.Controllers
         public UsersController(IUserRepository userRepository)
         {
             _userRepository = userRepository;
-            this._apiResponse = new();
+            _apiResponse = new();
         }
 
         [HttpPost("login")]
@@ -41,7 +43,7 @@ namespace WebApiTravel.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterRequestDTO model)
         {
             bool ifUserNameUnique = _userRepository.IsUniqueUser(model.UserName);
-            if (!ifUserNameUnique) 
+            if (!ifUserNameUnique)
             {
                 _apiResponse.StatusCode = HttpStatusCode.BadRequest;
                 _apiResponse.IsSuccess = false;
@@ -51,7 +53,7 @@ namespace WebApiTravel.Controllers
             }
 
             var user = await _userRepository.Register(model);
-            if(user == null)
+            if (user == null)
             {
                 _apiResponse.StatusCode = HttpStatusCode.BadRequest;
                 _apiResponse.IsSuccess = false;

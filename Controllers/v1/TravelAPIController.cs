@@ -4,36 +4,54 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using System.Text.Json;
 using WebApiTravel.Data;
 using WebApiTravel.Models;
 using WebApiTravel.Models.Dto;
 using WebApiTravel.Repository.IRepository;
 
-namespace WebApiTravel.Controllers
+namespace WebApiTravel.Controllers.v1
 {
     //[Route("api/[controller]")]
-    [Route("api/TravelAPI")]
+    [Route("api/v{version:apiVersion}/TravelAPI")]
     [ApiController]
+    [ApiVersion("1.0")]
     public class TravelAPIController : ControllerBase
     {
         protected APIResponse _response;
         private readonly ITravelRepository _travelRepository;
         private readonly IMapper _mapper;
-        public TravelAPIController(ITravelRepository travelRepository, IMapper mapper) 
-        { 
-            _travelRepository = travelRepository; 
+        public TravelAPIController(ITravelRepository travelRepository, IMapper mapper)
+        {
+            _travelRepository = travelRepository;
             _mapper = mapper;
-            this._response = new APIResponse();
+            _response = new APIResponse();
         }
 
         [HttpGet]
-        [Authorize]
+        [ResponseCache(CacheProfileName = "Default30")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<APIResponse>> GetTravels()
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<APIResponse>> GetTravels([FromQuery(Name = "FilterOccupancy")]int? occupancy, 
+            [FromQuery]string? search, int pageSize = 0, int pageNumber = 1)
         {
             try
             {
-                IEnumerable<Travel> travelList = await _travelRepository.GetAllAsync();
+                IEnumerable<Travel> travelList;
+                if(occupancy > 0)
+                {
+                    travelList = await _travelRepository.GetAllAsync(u => u.Occupancy == occupancy, pageSize:pageSize, pageNumber:pageNumber);
+                } else
+                {
+                    travelList = await _travelRepository.GetAllAsync(pageSize: pageSize, pageNumber: pageNumber);
+                }
+                if (!string.IsNullOrEmpty(search))
+                {
+                    travelList = travelList.Where(u => u.Name.ToLower().Contains(search));
+                }
+                Pagination pagination = new () { PageSize = pageSize, PageNumber = pageNumber};
+                Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(pagination));
                 _response.Result = _mapper.Map<List<TravelDTO>>(travelList);
                 _response.StatusCode = HttpStatusCode.OK;
                 return Ok(_response);
@@ -46,26 +64,27 @@ namespace WebApiTravel.Controllers
             return _response;
         }
 
-        [Authorize(Roles = "admin")]
         [HttpGet("{id:int}", Name = "GetTravel")]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetTravel(int id) 
+        public async Task<ActionResult<APIResponse>> GetTravel(int id)
         {
             try
             {
-                if(id == 0)
+                if (id == 0)
                 {
                     _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.IsSuccess = false;
                     return BadRequest(_response);
                 }
                 var travel = await _travelRepository.GetAsync(x => x.Id == id);
-                if(travel == null) 
+                if (travel == null)
                 {
                     _response.StatusCode = HttpStatusCode.NotFound;
+                    _response.IsSuccess = false;
                     return NotFound(_response);
                 }
                 _response.Result = _mapper.Map<TravelDTO>(travel);
@@ -87,7 +106,8 @@ namespace WebApiTravel.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<APIResponse>> CreateTravel([FromBody]TravelCreateDTO createDTO) {
+        public async Task<ActionResult<APIResponse>> CreateTravel([FromBody] TravelCreateDTO createDTO)
+        {
             try
             {
 
@@ -95,12 +115,13 @@ namespace WebApiTravel.Controllers
                 //{
                 //    return BadRequest(ModelState);
                 //}
-                if(await _travelRepository.GetAsync(x => x.Name.ToLower() == createDTO.Name.ToLower()) != null)
+                if (await _travelRepository.GetAsync(x => x.Name.ToLower() == createDTO.Name.ToLower()) != null)
                 {
                     ModelState.AddModelError("ErrorMessages", "Travel already Exists");
                     return BadRequest(ModelState);
                 }
-                if(createDTO == null) { 
+                if (createDTO == null)
+                {
                     return BadRequest(createDTO);
                 }
                 //if (travelDTO.Id > 0)
@@ -122,7 +143,7 @@ namespace WebApiTravel.Controllers
                 _response.Result = _mapper.Map<TravelDTO>(model);
                 _response.StatusCode = HttpStatusCode.Created;
 
-                return CreatedAtRoute("GetTravel",new { id = model.Id}, _response);
+                return CreatedAtRoute("GetTravel", new { id = model.Id }, _response);
             }
             catch (Exception ex)
             {
@@ -132,8 +153,8 @@ namespace WebApiTravel.Controllers
             return _response;
         }
 
-        [HttpDelete("{id:int}", Name ="DeleteTravel")]
-        [Authorize(Roles = "CUSTOM")]
+        [HttpDelete("{id:int}", Name = "DeleteTravel")]
+        [Authorize(Roles = "admin")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -144,15 +165,15 @@ namespace WebApiTravel.Controllers
             try
             {
 
-            if(id == 0)
-            {
-                return BadRequest();
-            }
-            var travel = await _travelRepository.GetAsync( x =>x.Id == id);
-            if(travel == null)
-            {
-                return NotFound();
-            }
+                if (id == 0)
+                {
+                    return BadRequest();
+                }
+                var travel = await _travelRepository.GetAsync(x => x.Id == id);
+                if (travel == null)
+                {
+                    return NotFound();
+                }
                 await _travelRepository.RemoveAsync(travel);
                 _response.StatusCode = HttpStatusCode.NoContent;
                 _response.IsSuccess = true;
@@ -166,15 +187,16 @@ namespace WebApiTravel.Controllers
             return _response;
 
         }
+        [Authorize(Roles = "admin")]
 
         [HttpPut("{id:int}", Name = "UpdateTravel")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<APIResponse>> UpdateTravel(int id, [FromBody]TravelUpdateDTO updateDTO)
+        public async Task<ActionResult<APIResponse>> UpdateTravel(int id, [FromBody] TravelUpdateDTO updateDTO)
         {
             try
             {
-                if(updateDTO == null || id != updateDTO.Id)
+                if (updateDTO == null || id != updateDTO.Id)
                 {
                     return BadRequest();
                 }
@@ -184,7 +206,7 @@ namespace WebApiTravel.Controllers
                 //travel.Sqft = travelDTO.Sqft;
 
                 Travel model = _mapper.Map<Travel>(updateDTO);
-                await _travelRepository.UpdateAsync(model); 
+                await _travelRepository.UpdateAsync(model);
                 _response.StatusCode = HttpStatusCode.OK;
                 _response.IsSuccess = true;
                 return Ok(_response);
@@ -196,31 +218,32 @@ namespace WebApiTravel.Controllers
             }
             return _response;
         }
+        [Authorize(Roles = "admin")]
 
         [HttpPatch("{id:int}", Name = "UpdatePartialTravel")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> UpdatePartialTravel(int id, JsonPatchDocument<TravelUpdateDTO> patchDTO)
         {
-            if(patchDTO == null || id == 0)
+            if (patchDTO == null || id == 0)
             {
                 return BadRequest();
             }
-            var travel = await _travelRepository.GetAsync(x => x.Id == id, tracked:false);
+            var travel = await _travelRepository.GetAsync(x => x.Id == id, tracked: false);
 
             TravelUpdateDTO travelDTO = _mapper.Map<TravelUpdateDTO>(travel);
-            
+
             if (travel == null)
             {
                 return BadRequest();
             }
             patchDTO.ApplyTo(travelDTO, ModelState);
             Travel model = _mapper.Map<Travel>(travelDTO);
-           
+
             await _travelRepository.UpdateAsync(model);
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState); 
+                return BadRequest(ModelState);
             }
             return NoContent();
         }

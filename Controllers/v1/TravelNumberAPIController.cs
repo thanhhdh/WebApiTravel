@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -8,11 +9,11 @@ using WebApiTravel.Models.Dto;
 using WebApiTravel.Repository;
 using WebApiTravel.Repository.IRepository;
 
-namespace WebApiTravel.Controllers
+namespace WebApiTravel.Controllers.v1
 {
-    //[Route("api/[controller]")]
-    [Route("api/TravelNumberAPI")]
+    [Route("api/v{version:apiVersion}/TravelNumberAPI")]
     [ApiController]
+    [ApiVersion("1.0")]
     public class TravelNumberAPIController : ControllerBase
     {
         protected APIResponse _response;
@@ -24,16 +25,18 @@ namespace WebApiTravel.Controllers
             _travelNumberRepository = travelNumberRepository;
             _travelRepository = travelRepository;
             _mapper = mapper;
-            this._response = new APIResponse();
+            _response = new APIResponse();
         }
+
+        //[MapToApiVersion("1.0")]
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<APIResponse>> GetTravelNumbers()
         {
             try
             {
-                IEnumerable<TravelNumber> travelNumberList = await _travelNumberRepository.GetAllAsync(includeProperties:"Travel");
-                _response.Result = (_mapper.Map<List<TravelNumber>>(travelNumberList));
+                IEnumerable<TravelNumber> travelNumberList = await _travelNumberRepository.GetAllAsync(includeProperties: "Travel");
+                _response.Result = _mapper.Map<List<TravelNumber>>(travelNumberList);
                 _response.StatusCode = HttpStatusCode.OK;
                 return Ok(_response);
             }
@@ -57,12 +60,14 @@ namespace WebApiTravel.Controllers
                 if (id == 0)
                 {
                     _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.IsSuccess = false;
                     return BadRequest(_response);
                 }
                 var travelNumber = await _travelNumberRepository.GetAsync(u => u.TravelNo == id);
                 if (travelNumber == null)
                 {
                     _response.StatusCode = HttpStatusCode.NotFound;
+                    _response.IsSuccess = false;
                     return NotFound(_response);
                 }
                 _response.Result = _mapper.Map<TravelNumberDTO>(travelNumber);
@@ -77,6 +82,8 @@ namespace WebApiTravel.Controllers
             }
             return Ok(_response);
         }
+
+        [Authorize(Roles = "admin")]
 
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -115,17 +122,18 @@ namespace WebApiTravel.Controllers
             return _response;
         }
 
+        [Authorize(Roles = "admin")]
 
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [HttpDelete("{id:int}"  , Name = "DeleteTravelNumber")]
+        [HttpDelete("{id:int}", Name = "DeleteTravelNumber")]
 
-        public async Task<ActionResult<APIResponse>> DeleteTravelNumber (int id)
+        public async Task<ActionResult<APIResponse>> DeleteTravelNumber(int id)
         {
             try
             {
-                if(id == 0)
+                if (id == 0)
                 {
                     return BadRequest();
                 }
@@ -146,6 +154,7 @@ namespace WebApiTravel.Controllers
             }
             return _response;
         }
+        [Authorize(Roles = "admin")]
 
         [HttpPut("{id:int}", Name = "UpdateTravelNumber")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
